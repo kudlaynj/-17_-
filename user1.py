@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 from app.backend.db_depends import get_db
 from typing import Annotated
-from app.models import *
+from app.models import Task, User, task, user
 from sqlalchemy import insert, update, select, delete
 from app.schemas import CreateUser, UpdateUser
 from slugify import slugify
@@ -19,21 +19,17 @@ async def all_users(db: Annotated[Session, Depends(get_db)]):
 
 @router.get("/user_id")
 async def user_by_id(db: Annotated[Session, Depends(get_db)], user_id: int):
-    try:
-        user = db.scalar(select(User).where(User.id == user_id))
-        db.commit()
-        if user is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail="User not found")
-        return user_by_id
-    except IndexError:
+    user = db.scalar(select(User).where(User.id == user_id))
+    db.commit()
+    if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail="User not found")
+    return user
 
 
 @router.get("/user_id/tasks")
 async def tasks_by_user_id(db: Annotated[Session, Depends(get_db)], user_id: int):
-    tasks_by_user = db.scalar(select(Task).where(Task.user_id == user_id))
+    tasks_by_user = db.scalars(select(Task).where(Task.user_id == user_id)).all()
     if tasks_by_user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"The User id {user_id} has no tasks")
     return tasks_by_user
@@ -54,7 +50,7 @@ async def create_user(db: Annotated[Session, Depends(get_db)], createuser: Creat
 
 @router.put("/update")
 async def update_user(db: Annotated[Session, Depends(get_db)], user_id: int, updateuser: UpdateUser):
-    db.execute(select(User).where(User.id == user_id))
+    user = db.scalar(select(User).where(User.id == user_id))
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_200_OK,
