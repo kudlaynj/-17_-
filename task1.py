@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 from app.backend.db_depends import get_db
 from typing import Annotated
-from app.models import Task, User, task
+from app.models import Task, User, task, user
 from sqlalchemy import insert, update, select, delete
 from app.schemas import CreateTask, UpdateTask
 from slugify import slugify
@@ -19,25 +19,20 @@ async def all_tasks(db: Annotated[Session, Depends(get_db)]):
 
 @router.get("/task_id")
 async def task_by_id(db: Annotated[Session, Depends(get_db)], task_id: int):
-    try:
-        task = db.scalar(select(Task).where(Task.id == task_id))
-        db.commit()
-        if task is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail="Task not found")
-        return task
-    except IndexError:
+    task = db.scalar(select(Task).where(Task.id == task_id))
+    if task is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail="Task not found")
+    return task
 
 
 @router.post("/create")
-async def create_task(db: Annotated[Session, Depends(get_db)], createtask: CreateTask, user_id: int, createtask1=None):
+async def create_task(db: Annotated[Session, Depends(get_db)], createtask: CreateTask, user_id: int):
     task_id = db.scalar(select(User).where(User.id == user_id))
 
-    if task_id is None:
+    if user_id is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Task not found")
+                            detail="User not found")
 
     db.execute(insert(Task).values(title=createtask.title,
                                    content=createtask.content,
@@ -53,11 +48,11 @@ async def create_task(db: Annotated[Session, Depends(get_db)], createtask: Creat
 
 @router.put("/update")
 async def update_task(db: Annotated[Session, Depends(get_db)], task_id: int, updatetask: UpdateTask):
-    db.execute(select(Task).where(Task.id == task_id))
+    db.scalar(select(Task).where(Task.id == task_id))
     if task is None:
         raise HTTPException(
             status_code=status.HTTP_200_OK,
-            detail='User update is successful!')
+            detail='Task update is successful!')
 
     db.execute(update(Task).where(Task.id == task_id).values(
         title=updatetask.title,
@@ -84,3 +79,4 @@ async def delete_task(db: Annotated[Session, Depends(get_db)], task_id: int):
     return {
         'status_code': status.HTTP_200_OK,
         'transaction': 'Task delete is successful!'}
+
